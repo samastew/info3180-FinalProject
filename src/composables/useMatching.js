@@ -1,4 +1,4 @@
-import { computed } from 'vue'
+import { ref, watch } from 'vue' // CHANGED: ref replaces computed (async can't use computed); watch added to re-run on filter changes
 import { useAuthStore } from '@/stores/auth'
 import { useMatchStore } from '@/stores/matches'
 
@@ -28,11 +28,14 @@ export function useMatching(filterOptions = {}) {
   const authStore = useAuthStore()
   const matchStore = useMatchStore()
 
-  const scoredCandidates = computed(() => {
+  const scoredCandidates = ref([]) // CHANGED: was computed(() => { ... }), now a ref populated by async loadCandidates()
+
+  // CHANGED: scoring logic extracted into this function so loadCandidates() can call it after fetching users
+  // Every line inside is identical to the original computed body
+  function scoreUsers(allUsers) {
     const me = authStore.currentUser
     if (!me) return []
 
-    const allUsers = authStore.getAllUsers()
     const dismissed = matchStore.dismissedIds.value ?? []
 
     const {
@@ -95,7 +98,55 @@ export function useMatching(filterOptions = {}) {
       })
       .filter(Boolean)
       .sort((a, b) => b.score - a.score)
-  })
+  }
+
+  // NEW: fetches users from Flask API, normalizes snake_case to camelCase, then scores them.
+  // Falls back to localStorage if API is unavailable so the app still works for teammates.
+  async function loadCandidates() {
+    try {
+      const params = new URLSearchParams()
+      if (filterOptions.minAge)            params.set('min_age', filterOptions.minAge)
+      if (filterOptions.maxAge)            params.set('max_age', filterOptions.maxAge)
+      if (filterOptions.interests?.length) params.set('interests', filterOptions.interests.join(','))
+      if (filterOptions.lookingFor)        params.set('looking_for', filterOptions.lookingFor)
+      if (filterOptions.maxDistanceKm)     params.set('max_distance_km', filterOptions.maxDistanceKm)
+
+      const me = authStore.currentUser
+      if (me?.location?.lat) {
+        params.set('lat', me.location.lat)
+        params.set('lng', me.location.lng)
+      }
+
+      const res = await fetch(`http://localhost:5000/api/search?${params}`)
+      if (!res.ok) throw new Error('Search failed')
+      const data = await res.json()
+
+      // Normalize API response (snake_case) to camelCase so scoreUsers() works unchanged
+      const normalized = data.users.map(u => ({
+        id:             u.id,
+        name:           u.name,
+        age:            u.age,
+        bio:            u.bio,
+        occupation:     u.occupation,
+        interests:      u.interests,
+        profilePicture: u.profile_picture,
+        lookingFor:     u.looking_for,
+        location:       u.latitude ? { city: u.city, lat: u.latitude, lng: u.longitude } : null,
+        maxDistanceKm:  u.max_distance_km,
+        isPublic:       u.is_public,
+      }))
+
+      scoredCandidates.value = scoreUsers(normalized)
+    } catch (err) {
+      // Fallback to localStorage if API is unavailable
+      console.warn('API unavailable, falling back to localStorage:', err.message)
+      const allUsers = authStore.getAllUsers()
+      scoredCandidates.value = scoreUsers(allUsers)
+    }
+  }
+
+  loadCandidates() // run on mount
+  watch(() => filterOptions, loadCandidates, { deep: true }) // re-run when filters change
 
   return { scoredCandidates }
 }
