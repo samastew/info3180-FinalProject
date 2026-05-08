@@ -1,0 +1,32 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; font-weight: normal; }
+
+body {
+  min-height: 100vh;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 15px;
+  background: #f8f9ff;
+  color: #1a1a2e;
+  -webkit-font-smoothing: antialiased;
+  padding-top: 70px;
+}
+
+/* Bootstrap primary colour override to match DriftDater brand */
+:root {
+  --bs-primary: #4361ee;
+  --bs-primary-rgb: 67, 97, 238;
+  --bs-btn-bg: #4361ee;
+  --bs-btn-border-color: #4361ee;
+  --bs-btn-hover-bg: #3651d4;
+  --bs-link-color: #4361ee;
+}
+
+.btn-primary {
+  background-color: #4361ee;
+  border-color: #4361ee;
+}
+.btn-primary:hover, .btn-primary:focus {
+  background-color: #3651d4;
+  border-color: #3651d4;
+}
+.btn-outline-primary { color: #4361ee; border-color: #4361ee; }
+.btn-outline-primary:hover { background-color: #4361ee; border-color: #4361ee; }
