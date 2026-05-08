@@ -1,94 +1,236 @@
+<script setup>
+import { ref, onMounted, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import api from '@/services/api'
+
+const route  = useRoute()
+const router = useRouter()
+const auth   = useAuthStore()
+
+const userId  = computed(() => Number(route.params.userId))
+const isOwn   = computed(() => userId.value === auth.currentUserId)
+const profile = ref(null)
+const loading = ref(true)
+const isFav   = ref(false)
+const swiping = ref(false)
+
+onMounted(async () => {
+  try {
+    const res = await api.get(`/profiles/${userId.value}`)
+    profile.value = res.data.profile
+    // Check if in favorites
+    const favRes = await api.get('/favorites')
+    isFav.value = favRes.data.favorites.some(f => f.favorited_id === userId.value)
+  } catch {}
+  loading.value = false
+})
+
+async function toggleFav() {
+  if (isFav.value) {
+    await api.delete(`/favorites/${userId.value}`)
+    isFav.value = false
+  } else {
+    await api.post(`/favorites/${userId.value}`)
+    isFav.value = true
+  }
+}
+
+async function sendLike() {
+  swiping.value = true
+  try {
+    const res = await api.post('/swipes', { swiped_id: userId.value, action: 'like' })
+    if (res.data.matched) alert(`🎉 You matched with ${profile.value?.first_name}!`)
+  } catch {}
+  swiping.value = false
+}
+
+function initials(p) {
+  return `${p?.first_name?.[0] || ''}${p?.last_name?.[0] || ''}`.toUpperCase()
+}
+
+const catEmoji = {
+  outdoors: '🏞️', arts: '🎨', tech: '💻', food: '🍕', travel: '✈️',
+  music: '🎵', education: '📚', sports: '⚽', entertainment: '🎬',
+  wellness: '🧘', social: '🤝', lifestyle: '👗',
+}
+</script>
+
 <template>
-  <div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="mb-0">My profile</h2>
-      <button v-if="!editing" class="btn btn-outline-primary btn-sm" @click="editing = true">
-        Edit profile
-      </button>
-      <button v-else class="btn btn-outline-secondary btn-sm" @click="editing = false">
-        Cancel
-      </button>
+  <div class="profile-page">
+    <div v-if="loading" style="text-align:center;padding:80px 0">
+      <div class="spinner"></div>
     </div>
 
-    <!-- View mode -->
-    <div v-if="!editing && user" class="profile-view">
-      <div class="profile-view__header">
-        <div class="profile-view__photo">
-          <img v-if="user.profilePicture" :src="user.profilePicture" alt="You" />
-          <div v-else class="profile-view__avatar">{{ initials }}</div>
-        </div>
-        <div>
-          <h3 class="mb-0">{{ user.name }}, {{ user.age }}</h3>
-          <p class="text-muted mb-1">{{ user.location?.city || 'No location set' }}</p>
-          <span class="badge" :class="user.isPublic ? 'bg-success' : 'bg-secondary'">
-            {{ user.isPublic ? 'Public' : 'Private' }}
-          </span>
-        </div>
-      </div>
-
-      <div v-if="user.bio" class="profile-section">
-        <h6 class="section-label">About</h6>
-        <p>{{ user.bio }}</p>
-      </div>
-
-      <div class="profile-section row g-3">
-        <div v-if="user.occupation" class="col-md-6">
-          <h6 class="section-label">Occupation</h6>
-          <p>{{ user.occupation }}</p>
-        </div>
-        <div v-if="user.lookingFor" class="col-md-6">
-          <h6 class="section-label">Looking for</h6>
-          <p>{{ user.lookingFor }}</p>
-        </div>
-      </div>
-
-      <div v-if="user.interests?.length" class="profile-section">
-        <h6 class="section-label">Interests</h6>
-        <div class="interest-grid">
-          <span v-for="tag in user.interests" :key="tag" class="interest-pill">{{ tag }}</span>
-        </div>
-      </div>
-
-      <div v-if="!user.profileComplete" class="alert alert-warning mt-3">
-        Your profile is incomplete — <RouterLink to="/profile/edit">finish setting it up</RouterLink> to start matching.
-      </div>
+    <div v-else-if="!profile" class="not-found">
+      <h2>Profile not found</h2>
+      <button class="btn btn-primary" @click="router.back()">Go Back</button>
     </div>
 
-    <!-- Edit mode -->
-    <ProfileEditor v-if="editing" @saved="editing = false" />
+    <template v-else>
+      <!-- Hero banner -->
+      <div class="profile-hero">
+        <div class="profile-hero-photo">
+          <img v-if="profile.profile_photo_url" :src="profile.profile_photo_url" :alt="profile.first_name" />
+          <div v-else class="profile-photo-placeholder">{{ initials(profile) }}</div>
+        </div>
+        <div class="profile-hero-overlay">
+          <div class="profile-hero-content">
+            <h1>{{ profile.first_name }} {{ profile.last_name }}, {{ profile.age }}</h1>
+            <p v-if="profile.city">📍 {{ profile.city }}, {{ profile.country }}</p>
+          </div>
+
+          <div v-if="!isOwn" class="profile-hero-actions">
+            <button class="hero-action-btn fav" :class="{ active: isFav }" @click="toggleFav" :title="isFav ? 'Remove from favourites' : 'Add to favourites'">
+              {{ isFav ? '⭐' : '☆' }}
+            </button>
+            <button class="hero-action-btn like" @click="sendLike" :disabled="swiping">
+              ❤️ Like
+            </button>
+          </div>
+
+          <div v-else class="profile-hero-actions">
+            <RouterLink to="/profile/edit" class="btn btn-secondary btn-sm">✏️ Edit Profile</RouterLink>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile content -->
+      <div class="profile-content">
+        <div class="profile-main">
+          <!-- About -->
+          <div class="profile-section card">
+            <h2 class="profile-section-title">About Me</h2>
+            <p v-if="profile.bio" class="profile-bio">{{ profile.bio }}</p>
+            <p v-else class="profile-empty">No bio yet.</p>
+
+            <div class="profile-details-grid">
+              <div v-if="profile.occupation" class="detail-item">
+                <span class="detail-label">💼 Occupation</span>
+                <span class="detail-value">{{ profile.occupation }}</span>
+              </div>
+              <div v-if="profile.education_level" class="detail-item">
+                <span class="detail-label">🎓 Education</span>
+                <span class="detail-value">{{ profile.education_level }}</span>
+              </div>
+              <div v-if="profile.relationship_goal" class="detail-item">
+                <span class="detail-label">💕 Looking for</span>
+                <span class="detail-value">{{ profile.relationship_goal }}</span>
+              </div>
+              <div v-if="profile.gender" class="detail-item">
+                <span class="detail-label">👤 Gender</span>
+                <span class="detail-value">{{ profile.gender }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Interests -->
+          <div v-if="profile.interests?.length" class="profile-section card">
+            <h2 class="profile-section-title">Interests</h2>
+            <div class="interests-grouped">
+              <div
+                v-for="i in profile.interests"
+                :key="i.interest_id"
+                class="interest-chip"
+              >
+                {{ catEmoji[i.category] || '⭐' }} {{ i.name }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="profile-sidebar">
+          <div class="profile-section card sidebar-card">
+            <h2 class="profile-section-title">Quick Info</h2>
+            <div class="quick-info">
+              <div class="qi-item"><span>🎂</span> {{ profile.age }} years old</div>
+              <div class="qi-item" v-if="profile.city"><span>📍</span> {{ profile.city }}, {{ profile.country }}</div>
+              <div class="qi-item" v-if="profile.looking_for"><span>👀</span> Looking for {{ profile.looking_for }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
-import { RouterLink } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import ProfileEditor from '@/components/profile/ProfileEditor.vue'
-
-const authStore = useAuthStore()
-const editing = ref(false)
-const user = computed(() => authStore.currentUser)
-
-const initials = computed(() =>
-  (user.value?.name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-)
-</script>
-
 <style scoped>
-.profile-view__header { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.profile-view__photo { width: 90px; height: 90px; border-radius: 50%; overflow: hidden; flex-shrink: 0; }
-.profile-view__photo img { width: 100%; height: 100%; object-fit: cover; }
-.profile-view__avatar {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #4361ee, #7b5ea7);
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 1.6rem; font-weight: 700;
+.profile-page { min-height: calc(100vh - var(--nav-height)); background: var(--nude); }
+.not-found { text-align: center; padding: 80px; }
+
+.profile-hero {
+  position: relative; height: 420px; overflow: hidden;
+  background: var(--blush);
 }
-.profile-section { margin-bottom: 1.5rem; }
-.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; margin-bottom: 6px; }
-.interest-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.interest-pill {
-  padding: 4px 14px; border-radius: 20px; background: #eef2ff; color: #4361ee; font-size: 13px; font-weight: 500;
+.profile-hero-photo { width: 100%; height: 100%; }
+.profile-hero-photo img { width: 100%; height: 100%; object-fit: cover; }
+.profile-photo-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-size: 100px; color: var(--coral);
+  background: linear-gradient(135deg, var(--blush), #FFD6D6);
+}
+.profile-hero-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(transparent 30%, rgba(0,0,0,0.75) 100%);
+  display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 32px; gap: 16px;
+}
+.profile-hero-content { color: white; }
+.profile-hero-content h1 { font-family: var(--font-display); font-size: 36px; margin-bottom: 6px; }
+.profile-hero-content p { font-size: 16px; opacity: 0.9; }
+.profile-hero-actions { display: flex; gap: 12px; align-items: center; }
+
+.hero-action-btn {
+  border: none; cursor: pointer; border-radius: 50px; font-size: 16px;
+  font-weight: 700; font-family: var(--font-body); transition: all 0.2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.hero-action-btn.fav {
+  width: 48px; height: 48px; border-radius: 50%; background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(8px); color: white; font-size: 22px; justify-content: center;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+.hero-action-btn.fav.active { background: var(--gold); border-color: var(--gold); }
+.hero-action-btn.fav:hover { background: rgba(255,255,255,0.35); }
+.hero-action-btn.like {
+  padding: 12px 28px;
+  background: linear-gradient(135deg, var(--coral), #FF4E4E);
+  color: white; box-shadow: 0 4px 16px rgba(255,107,107,0.4);
+  border-radius: 50px;
+}
+.hero-action-btn.like:hover { transform: scale(1.04); }
+.hero-action-btn.like:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.profile-content {
+  max-width: 1000px; margin: 0 auto; padding: 32px 24px;
+  display: grid; grid-template-columns: 1fr 300px; gap: 24px;
+}
+.profile-section { padding: 24px; margin-bottom: 20px; }
+.profile-section-title { font-family: var(--font-display); font-size: 22px; margin-bottom: 16px; }
+.profile-bio { color: var(--slate); line-height: 1.7; font-size: 16px; }
+.profile-empty { color: var(--mist); font-style: italic; }
+
+.profile-details-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 20px;
+}
+.detail-item { display: flex; flex-direction: column; gap: 2px; }
+.detail-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--mist); }
+.detail-value { font-size: 15px; color: var(--ink); font-weight: 500; }
+
+.interests-grouped { display: flex; flex-wrap: wrap; gap: 8px; }
+.interest-chip {
+  padding: 6px 14px; background: var(--blush); color: var(--crimson);
+  border-radius: 50px; font-size: 14px; font-weight: 600;
+}
+
+.sidebar-card { margin-bottom: 0; }
+.quick-info { display: flex; flex-direction: column; gap: 12px; }
+.qi-item { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--slate); }
+.qi-item span { font-size: 18px; }
+
+@media (max-width: 768px) {
+  .profile-content { grid-template-columns: 1fr; }
+  .profile-sidebar { order: -1; }
 }
 </style>
