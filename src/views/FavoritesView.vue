@@ -1,3 +1,5 @@
+<!-- This view shows a user's favourites -->
+ 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
