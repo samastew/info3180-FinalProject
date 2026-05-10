@@ -1,9 +1,5 @@
 {
-<<<<<<< Updated upstream
-  "name": "info3180-vuejs-flask-starter",
-=======
   "name": "driftdater",
->>>>>>> Stashed changes
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
@@ -11,25 +7,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
-<<<<<<< Updated upstream
-    "pinia": "^2.1.7",
-    "vue": "^3.2.47",
-    "vue-router": "^4.1.6"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-vue": "^4.0.0",
-    "vite": "^4.1.4"
-  }
-}
-=======
     "axios": "^1.6.0",
     "pinia": "^2.1.7",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^4.4.0",
-    "vite": "^5.0.0"
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^6.0.0"
   }
 }
->>>>>>> Stashed changes
