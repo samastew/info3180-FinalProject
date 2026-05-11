@@ -1,16 +1,4 @@
 import { fileURLToPath, URL } from 'url'
-<<<<<<< Updated upstream
-
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [vue()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
-=======
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
@@ -25,7 +13,6 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       }
->>>>>>> Stashed changes
     }
   }
 })

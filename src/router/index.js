@@ -1,7 +1,3 @@
-<<<<<<< Updated upstream
-import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-=======
 /**
  * router/index.js
  *
@@ -13,27 +9,10 @@ import HomeView from '../views/HomeView.vue'
 
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
->>>>>>> Stashed changes
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
-<<<<<<< Updated upstream
-    { path: '/',          name: 'home',     component: HomeView },
-    { path: '/login',     name: 'login',    component: () => import('../views/LoginView.vue') },
-    { path: '/register',  name: 'register', component: () => import('../views/RegisterView.vue') },
-    {
-      path: '/profile',
-      name: 'profile',
-      component: () => import('../views/ProfileView.vue'),
-      meta: { requiresAuth: true },
-    },
-    {
-      path: '/profile/edit',
-      name: 'profile-edit',
-      component: () => import('../views/ProfileView.vue'),
-      props: { isNew: true },
-=======
     // ── Public ────────────────────────────────────────────────────────────
     {
       path: '/',
@@ -58,38 +37,17 @@ const router = createRouter({
       path: '/setup-profile',
       name: 'setup-profile',
       component: () => import('@/views/SetupProfileView.vue'),
->>>>>>> Stashed changes
       meta: { requiresAuth: true },
     },
     {
       path: '/discover',
       name: 'discover',
-<<<<<<< Updated upstream
-      component: () => import('../views/DiscoverView.vue'),
-=======
       component: () => import('@/views/DiscoverView.vue'),
->>>>>>> Stashed changes
       meta: { requiresAuth: true },
     },
     {
       path: '/matches',
       name: 'matches',
-<<<<<<< Updated upstream
-      component: () => import('../views/MatchesView.vue'),
-      meta: { requiresAuth: true },
-    },
-    { path: '/about', name: 'about', component: () => import('../views/AboutView.vue') },
-  ],
-})
-
-// Navigation guard — redirect unauthenticated users to /login
-router.beforeEach((to, from, next) => {
-  if (to.meta.requiresAuth) {
-    const user = JSON.parse(localStorage.getItem('dd_user') || 'null')
-    if (!user) return next('/login')
-  }
-  next()
-=======
       component: () => import('@/views/MatchesView.vue'),
       meta: { requiresAuth: true },
     },
@@ -144,7 +102,6 @@ router.beforeEach((to, from, next) => {
   } else {
     next()
   }
->>>>>>> Stashed changes
 })
 
 export default router
