@@ -8,7 +8,7 @@
 | Bashir | Project Manager / Backend Lead |
 | Samara | Frontend Lead |
 | Jade | QA / Testing Lead |
-| Bashir | Database / Deployment Lead |
+| Sheldon | Database / Deployment Lead |
 
 ---
 
