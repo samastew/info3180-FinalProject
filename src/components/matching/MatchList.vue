@@ -8,18 +8,18 @@
     <div v-else class="match-list">
       <div
         v-for="match in matches"
-        :key="match.id"
+        :key="match.match_id"
         class="match-list-item"
         @click="emit('select', match)"
       >
         <div class="match-list-item__photo">
-          <img v-if="match.profilePicture" :src="match.profilePicture" :alt="match.name" />
-          <div v-else class="match-list-item__avatar">{{ initials(match.name) }}</div>
+          <img v-if="match.other_profile?.profile_photo_url" :src="match.other_profile.profile_photo_url" :alt="match.other_profile.first_name" />
+          <div v-else class="match-list-item__avatar">{{ initials(match.other_profile) }}</div>
           <span class="match-dot" />
         </div>
         <div class="match-list-item__info">
-          <p class="match-list-item__name">{{ match.name }}, {{ match.age }}</p>
-          <p class="match-list-item__city">{{ match.location?.city || '—' }}</p>
+          <p class="match-list-item__name">{{ match.other_profile?.first_name }} {{ match.other_profile?.last_name }}</p>
+          <p class="match-list-item__city">{{ match.other_profile?.city || '—' }}</p>
         </div>
         <div class="match-list-item__arrow">›</div>
       </div>
@@ -33,8 +33,9 @@ const props = defineProps({
 })
 const emit = defineEmits(['select'])
 
-function initials(name) {
-  return (name || '').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+function initials(profile) {
+  if (!profile) return '?'
+  return ((profile.first_name?.[0] || '') + (profile.last_name?.[0] || '')).toUpperCase()
 }
 </script>
 

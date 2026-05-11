@@ -52,11 +52,11 @@
           <div class="queue-avatars">
             <div
               v-for="c in queue.slice(1, 5)"
-              :key="c.user.id"
+              :key="c.user_id"
               class="queue-avatar"
             >
-              <img v-if="c.user.profilePicture" :src="c.user.profilePicture" :alt="c.user.name" />
-              <span v-else>{{ c.user.name?.[0] }}</span>
+              <img v-if="c.profile_photo_url" :src="c.profile_photo_url" :alt="c.first_name" />
+              <span v-else>{{ c.first_name?.[0] }}</span>
             </div>
             <span v-if="queue.length > 5" class="queue-more">+{{ queue.length - 5 }}</span>
           </div>
@@ -67,6 +67,83 @@
 </template>
 
 <script setup>
+
+// CHANGED: removed useMatching and useMatchStore imports — they relied on 
+// getAllUsers() which doesn't exist in the auth store, always returning empty.
+// Added onMounted to trigger API call when page loads, and api to make requests.
+import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import MatchCard from '@/components/matching/MatchCard.vue'
+import MatchFilters from '@/components/matching/MatchFilters.vue'
+import api from '@/services/api'
+
+const authStore = useAuthStore()
+
+// CHANGED: replaced scoredCandidates from useMatching with allProfiles fetched 
+// from the real API. Originally this was always empty because getAllUsers() 
+// didnt exist.
+const allProfiles = ref([])
+const activeFilters = ref({})
+const showMobileFilters = ref(false)
+const currentDecision = ref(null)
+const latestMatch = ref(null)
+const processedIds = ref([])
+// ADDED: loading state so we can show a spinner while profiles are fetching :)
+const loading = ref(true)
+
+// CHANGED: originally there was no onMounted at all — nothing ever fetched 
+// profiles from the backend. This now calls /api/discover on page load to 
+// get real profiles from your database.
+onMounted(async () => {
+  try {
+    const res = await api.get('/discover')
+    allProfiles.value = res.data.profiles
+  } catch (e) {
+    console.error('Failed to load profiles', e)
+  } finally {
+    loading.value = false
+  }
+})
+
+// CHANGED: was filtering scoredCandidates (always empty) from useMatching.
+// Now filters allProfiles from the API. Also changed c.user.id to p.user_id
+// to match the field name your backend actually returns.
+const queue = computed(() =>
+  allProfiles.value.filter(p => !processedIds.value.includes(p.user_id))
+)
+
+const currentCandidate = computed(() => queue.value[0] ?? null)
+
+// CHANGED: was calling matchStore.interact() which only updated a local Pinia 
+// store and never saved anything to the database. Now posts to /api/swipes so 
+// swipes actually persist. Also added match detection — if the API response 
+// says matched: true, shows the match notification with the person's name.
+async function handleAction(userId, action) {
+  currentDecision.value = action
+  try {
+    const res = await api.post('/swipes', { swiped_id: userId, action })
+    if (res.data.matched) {
+      latestMatch.value = currentCandidate.value?.first_name
+      setTimeout(() => latestMatch.value = null, 4000)
+    }
+  } catch (e) {
+    console.error('Swipe failed', e)
+  }
+  setTimeout(() => {
+    processedIds.value.push(userId)
+    currentDecision.value = null
+  }, 350)
+}
+
+// CHANGED: originally just cleared processedIds from the local store. 
+// Now also re-fetches from the API so you actually get fresh profiles.
+async function resetQueue() {
+  processedIds.value = []
+  const res = await api.get('/discover')
+  allProfiles.value = res.data.profiles
+}
+
+/*
 import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useMatchStore } from '@/stores/matches'
@@ -116,6 +193,7 @@ function handleAction(userId, action) {
 function resetQueue() {
   processedIds.value = []
 }
+  */
 </script>
 
 <style scoped>

@@ -1,49 +1,48 @@
+<!--MatchCard.vue was rewritten to use the actual API data shape.
+  The original version expected a nested { user, score, reasons, sharedInterests } object
+  from a local matching algorithm (useMatching) that was never connected to the backend.
+  It is now updated to work with the flat profile object returned by GET /api/discover,
+  using fields like first_name, last_name, user_id, date_of_birth, and interests directly.
+-->
+
 <template>
   <div class="match-card" :class="{ 'match-card--liked': decision === 'like', 'match-card--disliked': decision === 'dislike' }">
     <!-- Photo / avatar -->
     <div class="match-card__photo">
-      <img v-if="candidate.user.profilePicture" :src="candidate.user.profilePicture" :alt="candidate.user.name" />
+      <img v-if="candidate.profile_photo_url" :src="candidate.profile_photo_url" :alt="fullName" />
       <div v-else class="match-card__avatar">{{ initials }}</div>
-      <div class="match-card__score-badge">{{ scorePercent }}% match</div>
     </div>
 
     <!-- Info -->
     <div class="match-card__info">
       <div class="match-card__name-row">
-        <h4 class="match-card__name">{{ candidate.user.name }}, {{ candidate.user.age }}</h4>
-        <span class="match-card__city">{{ candidate.user.location?.city || '—' }}</span>
+        <h4 class="match-card__name">{{ fullName }}, {{ age }}</h4>
+        <span class="match-card__city">{{ candidate.city || '—' }}</span>
       </div>
 
-      <p v-if="candidate.user.occupation" class="match-card__occupation">
-        {{ candidate.user.occupation }}
-      </p>
+      <p v-if="candidate.occupation" class="match-card__occupation">{{ candidate.occupation }}</p>
 
-      <p v-if="candidate.user.bio" class="match-card__bio">{{ candidate.user.bio }}</p>
+      <p v-if="candidate.bio" class="match-card__bio">{{ candidate.bio }}</p>
 
-      <!-- Why matched -->
-      <div v-if="candidate.reasons?.length" class="match-card__reasons">
-        <span v-for="r in candidate.reasons" :key="r" class="reason-pill">{{ r }}</span>
-      </div>
-
-      <!-- Shared interests -->
+      <!-- Interests from API -->
       <div class="match-card__interests">
         <span
-          v-for="tag in candidate.sharedInterests"
-          :key="tag"
+          v-for="interest in candidate.interests"
+          :key="interest.interest_id"
           class="interest-tag"
-        >{{ tag }}</span>
+        >{{ interest.name }}</span>
       </div>
     </div>
 
     <!-- Action buttons -->
     <div class="match-card__actions">
-      <button class="action-btn action-btn--pass" @click="emit('action', candidate.user.id, 'pass')" title="Pass">
+      <button class="action-btn action-btn--pass" @click="emit('action', candidate.user_id, 'pass')" title="Pass">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 10l5-5M10 10l-5 5M10 10l-5-5M10 10l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
-      <button class="action-btn action-btn--dislike" @click="emit('action', candidate.user.id, 'dislike')" title="Dislike">
+      <button class="action-btn action-btn--dislike" @click="emit('action', candidate.user_id, 'dislike')" title="Dislike">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
       </button>
-      <button class="action-btn action-btn--like" @click="emit('action', candidate.user.id, 'like')" title="Like">
+      <button class="action-btn action-btn--like" @click="emit('action', candidate.user_id, 'like')" title="Like">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 21C12 21 3 14.5 3 8.5C3 5.42 5.42 3 8.5 3C10.24 3 11.81 3.89 12 5C12.19 3.89 13.76 3 15.5 3C18.58 3 21 5.42 21 8.5C21 14.5 12 21 12 21Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
     </div>
@@ -54,18 +53,28 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  candidate: { type: Object, required: true }, // { user, score, reasons, sharedInterests }
-  decision: { type: String, default: null },   // 'like' | 'dislike' | 'pass' | null
+  candidate: { type: Object, required: true },
+  decision: { type: String, default: null },
 })
 
 const emit = defineEmits(['action'])
 
-const initials = computed(() =>
-  props.candidate.user.name?.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'
+const fullName = computed(() =>
+  `${props.candidate.first_name} ${props.candidate.last_name}`
 )
 
-// Normalise score to a 0–100 percentage (max possible score is 100)
-const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.score)))
+const age = computed(() => {
+  if (!props.candidate.date_of_birth) return ''
+  const today = new Date()
+  const dob = new Date(props.candidate.date_of_birth)
+  let a = today.getFullYear() - dob.getFullYear()
+  if (today < new Date(today.getFullYear(), dob.getMonth(), dob.getDate())) a--
+  return a
+})
+
+const initials = computed(() =>
+  ((props.candidate.first_name?.[0] || '') + (props.candidate.last_name?.[0] || '')).toUpperCase() || '?'
+)
 </script>
 
 <style scoped>
@@ -82,7 +91,6 @@ const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.sco
 .match-card--liked { box-shadow: 0 4px 20px rgba(67,97,238,0.25); }
 .match-card--disliked { opacity: 0.5; }
 
-/* Photo */
 .match-card__photo {
   position: relative;
   height: 280px;
@@ -105,20 +113,7 @@ const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.sco
   color: #4361ee;
   background: linear-gradient(135deg, #eef2ff, #ede9f9);
 }
-.match-card__score-badge {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: rgba(255,255,255,0.92);
-  backdrop-filter: blur(4px);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #4361ee;
-}
 
-/* Info */
 .match-card__info { padding: 1rem 1.25rem 0.5rem; }
 .match-card__name-row {
   display: flex;
@@ -131,15 +126,6 @@ const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.sco
 .match-card__occupation { font-size: 13px; color: #6b7280; margin: 0 0 6px; }
 .match-card__bio { font-size: 14px; color: #4b5563; margin: 0 0 10px; line-height: 1.5; }
 
-.match-card__reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-.reason-pill {
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 12px;
-  background: #f0fdf4;
-  color: #15803d;
-  border: 1px solid #bbf7d0;
-}
 .match-card__interests { display: flex; flex-wrap: wrap; gap: 5px; }
 .interest-tag {
   font-size: 11px;
@@ -149,7 +135,6 @@ const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.sco
   color: #4361ee;
 }
 
-/* Actions */
 .match-card__actions {
   display: flex;
   justify-content: center;
@@ -168,7 +153,6 @@ const scorePercent = computed(() => Math.min(100, Math.round(props.candidate.sco
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .action-btn:hover { transform: scale(1.1); }
-
 .action-btn--pass {
   background: #f3f4f6;
   color: #9ca3af;

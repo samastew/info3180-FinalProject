@@ -26,25 +26,28 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+//replaced with actual API data, so the structure is different from the original version that expected a 
+// nested { user, score, reasons, sharedInterests } object from a local matching algorithm (useMatching) that was 
+// never connected to the backend. Now it works with the flat profile object returned by GET /api/discover, using
+// fields like first_name, last_name, user_id, date_of_birth, and interests directly.
+import { ref, onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useMatchStore } from '@/stores/matches'
 import MatchList from '@/components/matching/MatchList.vue'
 import ProfileCard from '@/components/profile/ProfileCard.vue'
+import api from '@/services/api'
 
-const authStore = useAuthStore()
-const matchStore = useMatchStore()
+const matchedUsers = ref([])
 const selectedMatch = ref(null)
 
-const matchedUsers = computed(() => {
-  const all = authStore.getAllUsers()
-  return matchStore.mutualMatchIds.value
-    .map(id => all.find(u => u.id === id))
-    .filter(Boolean)
+onMounted(async () => {
+  try {
+    const res = await api.get('/matches')
+    matchedUsers.value = res.data.matches
+  } catch (e) {
+    console.error('Failed to load matches', e)
+  }
 })
 </script>
-
 <style scoped>
 .match-detail-overlay {
   position: fixed;
