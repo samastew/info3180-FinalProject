@@ -5,10 +5,10 @@
 ## Team Members & Roles
 | Name | Role |
 |------|------|
-| (Your Name) | Project Manager / Backend Lead |
-| (Team Member 2) | Frontend Lead |
-| (Team Member 3) | QA / Testing Lead |
-| (Team Member 4) | Database / Deployment Lead |
+| Bashir | Project Manager / Backend Lead |
+| Samara | Frontend Lead |
+| Jade | QA / Testing Lead |
+| Bashir | Database / Deployment Lead |
 
 ---
 
