@@ -20,7 +20,27 @@ def create_app(config_class=Config):
 
     with app.app_context():
         from . import models  # registers all ORM classes with SQLAlchemy
+        from .models import Interest 
         db.create_all()       # creates any tables that don't exist yet
+
+        #Jade: added this to populate interests table because the interest selectiion was empty, stunting 
+        # profile creation. This will only run once, when the table is empty.
+        if not Interest.query.first():
+            interests_data = [
+                ('Hiking', 'outdoors'),    ('Photography', 'arts'),
+                ('Gaming', 'tech'),        ('Cooking', 'food'),
+                ('Traveling', 'travel'),   ('Music', 'arts'),
+                ('Reading', 'education'),  ('Fitness', 'sports'),
+                ('Dancing', 'arts'),       ('Movies', 'entertainment'),
+                ('Coffee', 'food'),        ('Yoga', 'wellness'),
+                ('Painting', 'arts'),      ('Cycling', 'sports'),
+                ('Swimming', 'sports'),    ('Volunteering', 'social'),
+                ('Technology', 'tech'),    ('Fashion', 'lifestyle'),
+                ('Gardening', 'outdoors'), ('Board Games', 'entertainment'),
+            ]
+            for name, cat in interests_data:
+                db.session.add(Interest(name=name, category=cat))
+            db.session.commit()
 
     from .views import bp
     app.register_blueprint(bp)
